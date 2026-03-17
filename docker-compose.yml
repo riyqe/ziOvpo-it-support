@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: itsupp_postgres
+    environment:
+      POSTGRES_DB: itsupp_db
+      POSTGRES_USER: itsupp_user
+      POSTGRES_PASSWORD: itsupp_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - itsupp_postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: itsupp_app
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8443:8443"
+    environment:
+      DB_HOST: db
+      DB_NAME: itsupp_db
+      DB_USER: itsupp_user
+      DB_PASSWORD: itsupp_pass
+      JWT_SECRET: BardakovskaiaMariaSergeevnaBKS2302BardakovskaiaMariaSergeevnaBKS2302
+      ADMIN_PASSWORD: admin12345
+      ADMIN_USERNAME: admin
+      ADMIN_EMAIL: admin@test.com
+      KEYSTORE_PASSWORD: rpboBardakovskaiaBKS2302
+
+volumes:
+  itsupp_postgres_data:
