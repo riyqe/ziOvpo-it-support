@@ -1,17 +1,25 @@
 package com.example.itsupp.model;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonAlias;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
@@ -22,15 +30,47 @@ import java.util.List;
 public class Users implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
+    @Column(name = "name", nullable = false, unique = true)
+    @JsonAlias({"username", "name"})
     private String username;
+
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
+
     private String department;
 
+    @Column(name = "password_hash", nullable = false)
+    @JsonAlias({"password", "password_hash"})
     private String password;
+
+    @Column(name = "role", nullable = false)
     private String role;
+
+    @Column(name = "is_account_expired", nullable = false)
+    @Builder.Default
+    private boolean isAccountExpired = false;
+
+    @Column(name = "is_account_locked", nullable = false)
+    @Builder.Default
+    private boolean isAccountLocked = false;
+
+    @Column(name = "is_credentials_expired", nullable = false)
+    @Builder.Default
+    private boolean isCredentialsExpired = false;
+
+    @Column(name = "is_disabled", nullable = false)
+    @Builder.Default
+    private boolean isDisabled = false;
+
+    @PrePersist
+    @SuppressWarnings("unused")
+    private void ensureId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -52,21 +92,21 @@ public class Users implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return !isAccountExpired;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return !isAccountLocked;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return !isCredentialsExpired;
     }
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return !isDisabled;
     }
 }

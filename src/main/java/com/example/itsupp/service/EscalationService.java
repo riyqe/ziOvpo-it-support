@@ -35,21 +35,14 @@ public class EscalationService {
         int counter = 0;
 
         for (Ticket ticket : activeTickets) {
-            // пропускаем закрытые или эскалированные
             if (isTerminalState(ticket.getStatus())) {
                 continue;
             }
-
-            // если у тикета нет SLA -> без ограничения
             if (ticket.getSla() == null) {
                 continue;
             }
-
-            // расчет дедлайна: дата создания + часы изSLA
             int hoursAllowed = ticket.getSla().getResolveHours();
             LocalDateTime deadline = ticket.getCreatedAt().plusHours(hoursAllowed);
-
-            // если "сейчас" больше "дедлайна" -> просрочено
             if (LocalDateTime.now().isAfter(deadline)) {
                 log.warn("Тикет ID {} просрочен! Дедлайн был: {}. Эскалируем...", ticket.getId(), deadline);
 
@@ -63,16 +56,12 @@ public class EscalationService {
         }
         return counter;
     }
-
-    // статусы, которые не трогаем
     private boolean isTerminalState(TicketStatus status) {
         return status == TicketStatus.RESOLVED
                 || status == TicketStatus.ESCALATED
                 || status == TicketStatus.NOT_TO_BE_FIXED
                 || status == TicketStatus.SOLVED_BY_USER;
     }
-
-    // метод ручного вызова (получить список через контроллер)
     public List<Ticket> getOverdueTickets() {
         return ticketRepository.findAll().stream()
                 .filter(t -> t.getStatus() == TicketStatus.ESCALATED)

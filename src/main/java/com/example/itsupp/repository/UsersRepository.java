@@ -1,9 +1,12 @@
 package com.example.itsupp.repository;
 
-import com.example.itsupp.model.Users;
-import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
+import java.util.UUID;
 
-public interface UsersRepository extends JpaRepository<Users, Long> {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.itsupp.model.Users;
+
+public interface UsersRepository extends JpaRepository<Users, UUID> {
     Optional<Users> findByUsername(String username);
 }

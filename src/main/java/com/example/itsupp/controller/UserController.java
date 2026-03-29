@@ -1,11 +1,20 @@
 package com.example.itsupp.controller;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.example.itsupp.model.Users;
 import com.example.itsupp.repository.UsersRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -18,8 +27,6 @@ public class UserController {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
     }
-
-    // Получить всех пользователей
     @GetMapping
     public List<Users> getAllUsers() {
         return usersRepository.findAll();
@@ -42,10 +49,8 @@ public class UserController {
 
         return usersRepository.save(user);
     }
-
-    // Обновить данные пользователя
     @PutMapping("/{id}")
-    public Users updateUser(@PathVariable Long id, @RequestBody Users updatedUser) {
+    public Users updateUser(@PathVariable UUID id, @RequestBody Users updatedUser) {
         return usersRepository.findById(id)
                 .map(user -> {
                     user.setUsername(updatedUser.getUsername());
@@ -55,16 +60,12 @@ public class UserController {
                 })
                 .orElseThrow(() -> new RuntimeException("Пользователь с таким id не найден: " + id));
     }
-
-    // Удалить пользователя
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void deleteUser(@PathVariable UUID id) {
         usersRepository.deleteById(id);
     }
-
-    // Получить пользователя по ID
     @GetMapping("/{id}")
-    public Users getUserById(@PathVariable Long id) {
+    public Users getUserById(@PathVariable UUID id) {
         return usersRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Пользователь с таким id не найден: " + id));
     }

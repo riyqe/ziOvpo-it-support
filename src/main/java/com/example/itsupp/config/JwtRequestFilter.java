@@ -1,23 +1,23 @@
 package com.example.itsupp.config;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 public class JwtRequestFilter extends OncePerRequestFilter {
 
     private final JwtTokenUtils jwtTokenUtils;
-    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -39,18 +38,20 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 username = jwtTokenUtils.getUsername(jwt);
             } catch (ExpiredJwtException e) {
                 log.debug("Время жизни токена вышло");
-            } catch (SignatureException e) {
-                log.debug("Подпись неправильная");
+            } catch (JwtException e) {
+                log.debug("JWT невалиден");
             }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             if (jwtTokenUtils.validateToken(jwt)) {
-                List<String> roles = jwtTokenUtils.getRoles(jwt);
+            List<String> roles = jwtTokenUtils.getRoles(jwt);
                 List<SimpleGrantedAuthority> authorities = (roles != null)
                         ? roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
                         : List.of();
+
+            log.debug("JWT validated for user='{}' roles={} request={} {}", username, roles, request.getMethod(), request.getRequestURI());
 
                 UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
                         username,

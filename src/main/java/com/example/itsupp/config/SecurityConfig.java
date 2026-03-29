@@ -1,6 +1,5 @@
 package com.example.itsupp.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableMethodSecurity
@@ -29,50 +30,18 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // для всех
-                        .requestMatchers("/api/auth/**").permitAll()
-
-                        // админское
-                        .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN")
-
-                        // админ может создавать категории
-                        .requestMatchers(HttpMethod.POST, "/api/categories").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/executors").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/sla").hasRole("ADMIN")
-
-                        // админ может вручную эскалировать
-                        .requestMatchers(HttpMethod.POST, "/api/tickets/escalate").hasRole("ADMIN")
-
-                        // админ видит список просроченных
-                        .requestMatchers(HttpMethod.GET, "/api/tickets/overdue").hasRole("ADMIN")
-
-                        // админ может привязать SLA
-                        .requestMatchers(HttpMethod.POST, "/api/tickets/*/sla/*").hasRole("ADMIN")
-
-                        // обновление/удаление категорий, исполнителей, SLA
-                        .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/executors/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/executors/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/sla/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/sla/**").hasRole("ADMIN")
-
-                        // все авторизованные
-                        .requestMatchers(HttpMethod.GET, "/api/tickets/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/categories/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/executors/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/sla/**").authenticated()
-
-                        // создание и работа с тикетами для всех авторизованных
-                        .requestMatchers(HttpMethod.POST, "/api/tickets").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/tickets/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/tickets/*/assign/*").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/tickets/*/resolve").authenticated()
-
-                        // остальное запрещено
+                    .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/authslaassignresolve").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/products").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/license-types").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/license-types").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/license-types/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/license-types/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/license-types/**").hasRole("ADMIN")
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
