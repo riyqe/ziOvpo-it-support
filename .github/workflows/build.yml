@@ -2,9 +2,7 @@ name: rbpo ci/cd
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
 
 jobs:
   build:
@@ -29,6 +27,18 @@ jobs:
         run: ./mvnw clean package -DskipTests
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+
+      - name: Save Public Certificate
+        run: |
+          echo "${{ vars.PUBLIC_KEY_CERT }}" > /tmp/cert.pem
+
+      - name: Verify Public Key
+        run: |
+          openssl x509 -in /tmp/cert.pem -text -noout | grep -E "Subject:|CN=|Public-Key:"
+
+      - name: Verify Signature Algorithm
+        run: |
+          openssl x509 -in /tmp/cert.pem -text -noout | grep -A2 "Signature"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

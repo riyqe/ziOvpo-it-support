@@ -30,18 +30,50 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/authslaassignresolve").authenticated()
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+
+                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.POST, "/api/categories").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/tickets/escalate").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/tickets/overdue").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/licenses").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/tickets/*/sla/*").hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/executors/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/executors/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/sla/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/sla/**").hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.GET, "/api/tickets/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/categories/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/executors/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/sla/**").authenticated()
+
+                .requestMatchers(HttpMethod.POST, "/api/tickets").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/tickets/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/tickets/*/assign/*").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/tickets/*/resolve").authenticated()
+
                         .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/products").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/products/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/api/license-types").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/license-types").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/license-types/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/license-types/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/license-types/**").hasRole("ADMIN")
+
+                .requestMatchers("/api/licenses/**").authenticated()
+
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
