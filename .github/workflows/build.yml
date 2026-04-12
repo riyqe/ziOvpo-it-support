@@ -23,8 +23,8 @@ jobs:
           mkdir -p src/main/resources
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > src/main/resources/keystore.p12
 
-      - name: Build with Maven
-        run: ./mvnw clean package -DskipTests
+      - name: Test and Build with Maven
+        run: ./mvnw -B clean verify
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
 
@@ -43,5 +43,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: itsupp-app-jar
-          path: itsupp/target/*.jar
+          name: ziovpo-app-jar
+          path: target/*.jar

@@ -1,0 +1,66 @@
+package com.example.ziovpo.config;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class JwtRequestFilter extends OncePerRequestFilter {
+
+    private final JwtTokenUtils jwtTokenUtils;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
+        String username = null;
+        String jwt = null;
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+            try {
+                username = jwtTokenUtils.getUsername(jwt);
+            } catch (ExpiredJwtException e) {
+                log.debug("Время жизни токена вышло");
+            } catch (JwtException e) {
+                log.debug("JWT невалиден");
+            }
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            if (jwtTokenUtils.validateToken(jwt)) {
+            List<String> roles = jwtTokenUtils.getRoles(jwt);
+                List<SimpleGrantedAuthority> authorities = (roles != null)
+                        ? roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
+                        : List.of();
+
+            log.debug("JWT validated for user='{}' roles={} request={} {}", username, roles, request.getMethod(), request.getRequestURI());
+
+                UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        authorities
+                );
+                SecurityContextHolder.getContext().setAuthentication(token);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}
