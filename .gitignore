@@ -55,3 +55,6 @@ src/main/resources/application.properties
 
 # Docker
 docker-compose.yml
+
+# Postman
+postman_license_api.json
