@@ -41,3 +41,17 @@ certs/
 # env
 .env
 *.env
+
+# Log files
+*.log
+logs/
+
+# Sensitive configuration
+src/main/resources/application.properties
+
+# Mac
+.DS_Store
+
+# Docker
+docker-compose.yml
+
