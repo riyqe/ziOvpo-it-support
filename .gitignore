@@ -3,6 +3,7 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+postman_license_api.json
 
 ### STS ###
 .apt_generated
@@ -54,4 +55,3 @@ src/main/resources/application.properties
 
 # Docker
 docker-compose.yml
-
