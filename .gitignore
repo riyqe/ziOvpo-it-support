@@ -41,7 +41,7 @@ certs/
 
 # env
 .env
-*.env
+.env.*
 
 # Log files
 *.log
@@ -53,8 +53,9 @@ src/main/resources/application.properties
 # Mac
 .DS_Store
 
-# Docker
-docker-compose.yml
+# Docker local overrides
+docker-compose.override.yml
+docker-compose.local.yml
 
 # Postman
 postman_license_api.json
