@@ -33,9 +33,10 @@ public class JwtTokenUtils {
     @Value("${jwt.refresh.expiration.days}")
     private long refreshLifetimeDays;
 
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-    }
+        private Key getSigningKey() {
+            return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        }
+
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         List<String> rolesList = userDetails.getAuthorities().stream()
@@ -54,7 +55,7 @@ public class JwtTokenUtils {
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(issuedDate)
                 .setExpiration(expiredDate)
-            .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -67,17 +68,22 @@ public class JwtTokenUtils {
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(issuedDate)
                 .setExpiration(expiredDate)
-            .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String getUsername(String token) {
         return getAllClaimsFromToken(token).getSubject();
     }
-    @SuppressWarnings("unchecked")
+
     public List<String> getRoles(String token) {
-        return getAllClaimsFromToken(token).get("roles", List.class);
+        List<?> roles = getAllClaimsFromToken(token).get("roles", List.class);
+        if (roles == null) {
+            return List.of();
+        }
+        return roles.stream().map(String::valueOf).toList();
     }
+
     public String getEmail(String token) {
         return getAllClaimsFromToken(token).get("email", String.class);
     }

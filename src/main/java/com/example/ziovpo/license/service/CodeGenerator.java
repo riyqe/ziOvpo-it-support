@@ -1,12 +1,12 @@
 package com.example.ziovpo.license.service;
 
-import org.springframework.stereotype.Component;
-
 import java.security.SecureRandom;
+
+import org.springframework.stereotype.Component;
 
 @Component
 public class CodeGenerator {
-    private static final String ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // избегаем O/0, I/1
+    private static final String ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int CODE_LENGTH = 24;
 
     private final SecureRandom random = new SecureRandom();

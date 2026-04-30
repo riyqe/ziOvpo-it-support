@@ -8,7 +8,7 @@ public class CreateLicenseRequest {
     private UUID typeId;
     private UUID ownerId;
 
-    private Integer deviceCount; // лимит устройств (device_count)
+    private Integer deviceCount;
     private String description;
 
     public UUID getProductId() {
