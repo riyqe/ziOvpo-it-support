@@ -1,39 +1,45 @@
-version: '3.8'
-
-
 services:
   db:
     image: postgres:16
-    container_name: itsupp_postgres
+    container_name: ziovpo_postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-itsupp_db}
-      POSTGRES_USER: ${POSTGRES_USER:-itsupp_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${DB_PORT_MAPPING:-5436:5432}"
+      - "5436:5432"
     volumes:
-      - itsupp_postgres_data:/var/lib/postgresql/data
-
+      - ziovpo_postgres_data:/var/lib/postgresql/data
 
   app:
     build: .
-    container_name: itsupp_app
+    container_name: ziovpo_app
     restart: always
     depends_on:
       - db
     ports:
-      - "${APP_PORT_MAPPING:-8443:8443}"
+      - "8443:8443"
+    env_file:
+      - .env
     environment:
-      DB_HOST: db
-      DB_NAME: ${POSTGRES_DB:-itsupp_db}
-      DB_USER: ${POSTGRES_USER:-itsupp_user}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
       KEYSTORE_PASSWORD: ${KEYSTORE_PASSWORD}
-
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION}
+      JWT_REFRESH_DAYS: ${JWT_REFRESH_DAYS}
+      SIGNATURE_KEYSTORE_PATH: ${SIGNATURE_KEYSTORE_PATH}
+      SIGNATURE_KEYSTORE_TYPE: ${SIGNATURE_KEYSTORE_TYPE}
+      SIGNATURE_KEY_ALIAS: ${SIGNATURE_KEY_ALIAS}
+      SIGNATURE_KEY_PASSWORD: ${SIGNATURE_KEY_PASSWORD}
+      SIGNATURE_ALGORITHM: ${SIGNATURE_ALGORITHM}
 
 volumes:
-  itsupp_postgres_data:
+  ziovpo_postgres_data:
