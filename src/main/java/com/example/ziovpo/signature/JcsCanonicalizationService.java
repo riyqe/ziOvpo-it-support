@@ -1,25 +1,38 @@
 package com.example.ziovpo.signature;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Service
 public class JcsCanonicalizationService implements CanonicalizationService {
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    private static final BigInteger MIN_SAFE_INTEGER = BigInteger.valueOf(-9_007_199_254_740_991L);
+    private static final BigInteger MAX_SAFE_INTEGER = BigInteger.valueOf(9_007_199_254_740_991L);
+
+    private final ObjectMapper objectMapper;
+
+    public JcsCanonicalizationService() {
+        this(new ObjectMapper());
+    }
+
+    public JcsCanonicalizationService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper.copy()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
 
     @Override
     public byte[] canonicalize(Object payload) {
@@ -27,109 +40,177 @@ public class JcsCanonicalizationService implements CanonicalizationService {
             throw new SignatureModuleException(SignatureErrorCode.INPUT_INVALID, "payload is null");
         }
 
+        JsonNode model = toJsonNode(payload);
+        StringBuilder canonical = new StringBuilder();
+        writeCanonicalJson(model, canonical);
+        String canonicalJson = canonical.toString();
+        return canonicalJson.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private JsonNode toJsonNode(Object payload) {
         try {
-            JsonNode model = objectMapper.valueToTree(payload);
-            String canonicalJson = toCanonicalJson(model);
-            return canonicalJson.getBytes(StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException e) {
+            if (payload instanceof String json) {
+                return objectMapper.reader()
+                        .with(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                        .readTree(json);
+            }
+            return objectMapper.valueToTree(payload);
+        } catch (JsonProcessingException | IllegalArgumentException e) {
             throw new SignatureModuleException(SignatureErrorCode.INPUT_INVALID, "payload serialization failed", e);
-        } catch (SignatureModuleException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new SignatureModuleException(SignatureErrorCode.CANONICALIZATION_FAILED, "canonicalization failed", e);
         }
     }
 
-    private String toCanonicalJson(JsonNode node) {
-        StringBuilder sb = new StringBuilder();
-        appendNode(node, sb);
-        return sb.toString();
-    }
-
-    private void appendNode(JsonNode node, StringBuilder sb) {
+    private void writeCanonicalJson(JsonNode node, StringBuilder out) {
         if (node == null || node.isNull()) {
-            sb.append("null");
+            out.append("null");
             return;
         }
 
         if (node.isObject()) {
-            appendObject(node, sb);
+            writeCanonicalObject((ObjectNode) node, out);
             return;
         }
 
         if (node.isArray()) {
-            appendArray(node, sb);
+            out.append('[');
+            for (int i = 0; i < node.size(); i++) {
+                if (i > 0) {
+                    out.append(',');
+                }
+                writeCanonicalJson(node.get(i), out);
+            }
+            out.append(']');
             return;
         }
 
         if (node.isTextual()) {
-            appendQuoted(node.textValue(), sb);
-            return;
-        }
-
-        if (node.isNumber()) {
-            appendNumber(node, sb);
+            writeCanonicalString(node.textValue(), out);
             return;
         }
 
         if (node.isBoolean()) {
-            sb.append(node.booleanValue());
+            out.append(node.booleanValue());
             return;
         }
 
-        appendQuoted(node.asText(), sb);
+        if (node.isNumber()) {
+            out.append(writeCanonicalNumber(node));
+            return;
+        }
+
+        throw new SignatureModuleException(SignatureErrorCode.CANONICALIZATION_FAILED,
+                "unsupported json node type: " + node.getNodeType());
     }
 
-    private void appendObject(JsonNode node, StringBuilder sb) {
-        sb.append('{');
+    private void writeCanonicalObject(ObjectNode node, StringBuilder out) {
         List<String> keys = new ArrayList<>();
-        Iterator<String> fields = node.fieldNames();
-        while (fields.hasNext()) {
-            keys.add(fields.next());
-        }
-        Collections.sort(keys);
+        node.fieldNames().forEachRemaining(keys::add);
+        keys.sort(String::compareTo);
 
-        boolean first = true;
-        for (String key : keys) {
-            if (!first) {
-                sb.append(',');
-            }
-            first = false;
-            appendQuoted(key, sb);
-            sb.append(':');
-            appendNode(node.get(key), sb);
-        }
-        sb.append('}');
-    }
-
-    private void appendArray(JsonNode node, StringBuilder sb) {
-        sb.append('[');
-        for (int i = 0; i < node.size(); i++) {
+        out.append('{');
+        for (int i = 0; i < keys.size(); i++) {
             if (i > 0) {
-                sb.append(',');
+                out.append(',');
             }
-            appendNode(node.get(i), sb);
+            String key = keys.get(i);
+            writeCanonicalString(key, out);
+            out.append(':');
+            writeCanonicalJson(node.get(key), out);
         }
-        sb.append(']');
+        out.append('}');
     }
 
-    private void appendNumber(JsonNode node, StringBuilder sb) {
-        if (node.isFloatingPointNumber()) {
-            double value = node.doubleValue();
-            if (!Double.isFinite(value)) {
-                throw new SignatureModuleException(SignatureErrorCode.INPUT_INVALID, "non-finite numeric value");
+    private void writeCanonicalString(String value, StringBuilder out) {
+        validateNoLoneSurrogates(value);
+        out.append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            switch (ch) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\b' -> out.append("\\b");
+                case '\f' -> out.append("\\f");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                default -> {
+                    if (ch <= 0x1F) {
+                        out.append("\\u");
+                        String hex = Integer.toHexString(ch);
+                        out.append("0".repeat(4 - hex.length()));
+                        out.append(hex);
+                    } else {
+                        out.append(ch);
+                    }
+                }
             }
-            sb.append(node.decimalValue().stripTrailingZeros().toPlainString());
+        }
+        out.append('"');
+    }
+
+    private void validateNoLoneSurrogates(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (Character.isHighSurrogate(ch)) {
+                if (i + 1 >= value.length() || !Character.isLowSurrogate(value.charAt(i + 1))) {
+                    throw new SignatureModuleException(SignatureErrorCode.CANONICALIZATION_FAILED,
+                            "lone surrogate is not allowed by RFC8785");
+                }
+                i++;
+                continue;
+            }
+            if (Character.isLowSurrogate(ch)) {
+                throw new SignatureModuleException(SignatureErrorCode.CANONICALIZATION_FAILED,
+                        "lone surrogate is not allowed by RFC8785");
+            }
+        }
+    }
+
+    private String writeCanonicalNumber(JsonNode node) {
+        validateIJsonNumber(node);
+
+        double value = node.doubleValue();
+        if (!Double.isFinite(value)) {
+            throw new SignatureModuleException(SignatureErrorCode.INPUT_INVALID, "non-finite numeric value");
+        }
+        if (value == 0d) {
+            return "0";
+        }
+
+        BigDecimal decimal = BigDecimal.valueOf(value).stripTrailingZeros();
+        int exponent = decimal.precision() - decimal.scale() - 1;
+        if (exponent < -6 || exponent >= 21) {
+            String digits = decimal.unscaledValue().abs().toString();
+            String sign = decimal.signum() < 0 ? "-" : "";
+            String exponentValue = exponent >= 0 ? "+" + exponent : Integer.toString(exponent);
+            if (digits.length() == 1) {
+                return sign + digits + "e" + exponentValue;
+            }
+            return sign + digits.charAt(0) + "." + digits.substring(1) + "e" + exponentValue;
+        }
+
+        String plain = decimal.toPlainString();
+        if (plain.contains(".")) {
+            int end = plain.length();
+            while (end > 0 && plain.charAt(end - 1) == '0') {
+                end--;
+            }
+            if (end > 0 && plain.charAt(end - 1) == '.') {
+                end--;
+            }
+            return plain.substring(0, end);
+        }
+        return plain;
+    }
+
+    private void validateIJsonNumber(JsonNode node) {
+        if (!node.isIntegralNumber()) {
             return;
         }
-        sb.append(node.numberValue().toString());
-    }
-
-    private void appendQuoted(String value, StringBuilder sb) {
-        try {
-            sb.append(objectMapper.writeValueAsString(value));
-        } catch (JsonProcessingException e) {
-            throw new SignatureModuleException(SignatureErrorCode.OUTPUT_ENCODING_FAILED, "string encoding failed", e);
+        BigInteger value = node.bigIntegerValue();
+        if (value.compareTo(MIN_SAFE_INTEGER) < 0 || value.compareTo(MAX_SAFE_INTEGER) > 0) {
+            throw new SignatureModuleException(SignatureErrorCode.INPUT_INVALID,
+                    "integer is outside I-JSON IEEE-754 safe range: " + value);
         }
     }
 }
